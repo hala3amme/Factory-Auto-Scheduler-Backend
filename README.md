@@ -9,21 +9,31 @@ Built with **NestJS · PostgreSQL · Drizzle ORM** for an interview-grade demons
 ## Architecture
 
 ```
-src/
-├── app.module.ts
-├── main.ts
-├── common/
-│   ├── filters/http-exception.filter.ts   # Consistent error shape
-│   └── pipes/parse-date.pipe.ts           # YYYY-MM-DD guard
-├── database/
-│   ├── database.module.ts                 # Global Drizzle provider
-│   └── schema/                            # 8 Drizzle table definitions
-└── modules/
-    ├── skills/
-    ├── employees/
-    ├── parts/
-    ├── production-requirements/
-    └── scheduler/                         # Core greedy algorithm
+.
+├── docs/
+│   ├── factory-auto-scheduler.postman_collection.json
+│   ├── POSTMAN_GUIDE.md
+│   └── factory_auto_scheduler_technical_handoff.md
+├── src/
+│   ├── app.module.ts
+│   ├── main.ts
+│   ├── common/
+│   │   ├── filters/http-exception.filter.ts   # Consistent error shape
+│   │   └── pipes/parse-date.pipe.ts           # YYYY-MM-DD guard
+│   ├── database/
+│   │   ├── database.module.ts                 # Global Drizzle provider
+│   │   └── schema/                            # 8 Drizzle table definitions
+│   └── modules/
+│       ├── skills/
+│       ├── employees/
+│       ├── parts/
+│       ├── production-requirements/
+│       └── scheduler/                         # Core greedy algorithm
+├── test/
+│   └── scheduler.e2e-spec.ts                  # 4 E2E scenarios
+├── docker-compose.yml
+├── drizzle.config.ts
+└── .env.example
 ```
 
 ---
@@ -156,10 +166,21 @@ The scheduler uses a **deterministic greedy algorithm** designed for clarity ove
 docker compose up -d
 
 # Apply schema to the test DB (port 5433)
-DATABASE_URL=postgres://postgres:postgres@localhost:5433/factory_scheduler_test npm run db:push
+DATABASE_URL=postgres://postgres:postgres@localhost:5433/factory_scheduler_test \
+  npx drizzle-kit push
 
 # Run E2E suite
 npm run test:e2e
 ```
 
 The suite covers four deterministic scenarios: skill constraint, rest constraint, multi-skill part, and insufficient capacity.
+
+---
+
+## Documentation
+
+| File | Description |
+|---|---|
+| `docs/factory-auto-scheduler.postman_collection.json` | Postman collection — import directly into Postman |
+| `docs/POSTMAN_GUIDE.md` | Step-by-step Postman usage guide |
+| `docs/factory_auto_scheduler_technical_handoff.md` | Original assignment specification |
