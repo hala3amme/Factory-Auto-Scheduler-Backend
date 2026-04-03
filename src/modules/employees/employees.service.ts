@@ -21,9 +21,10 @@ export class EmployeesService {
         .values({ name: dto.name })
         .returning();
 
-      if (dto.skillIds.length > 0) {
+      const uniqueSkillIds = [...new Set(dto.skillIds)];
+      if (uniqueSkillIds.length > 0) {
         await tx.insert(employeeSkills).values(
-          dto.skillIds.map((skillId) => ({
+          uniqueSkillIds.map((skillId) => ({
             employeeId: employee.id,
             skillId,
           })),
@@ -80,9 +81,10 @@ export class EmployeesService {
           .delete(employeeSkills)
           .where(eq(employeeSkills.employeeId, id));
 
-        if (dto.skillIds.length > 0) {
+        const uniqueSkillIds = [...new Set(dto.skillIds)];
+        if (uniqueSkillIds.length > 0) {
           await tx.insert(employeeSkills).values(
-            dto.skillIds.map((skillId) => ({ employeeId: id, skillId })),
+            uniqueSkillIds.map((skillId) => ({ employeeId: id, skillId })),
           );
         }
       }

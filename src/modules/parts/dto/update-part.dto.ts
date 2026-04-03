@@ -1,5 +1,6 @@
 import {
   IsString,
+  IsNotEmpty,
   IsOptional,
   IsArray,
   ValidateNested,
@@ -9,6 +10,7 @@ import { SkillRequirementDto } from './create-part.dto';
 
 export class UpdatePartDto {
   @IsString()
+  @IsNotEmpty()
   @IsOptional()
   name?: string;
 

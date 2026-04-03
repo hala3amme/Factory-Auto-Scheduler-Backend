@@ -21,8 +21,11 @@ export class PartsService {
         .values({ name: dto.name })
         .returning();
 
+      const uniqueReqs = dto.skillRequirements.filter(
+        (sr, idx, arr) => arr.findIndex((x) => x.skillId === sr.skillId) === idx,
+      );
       await tx.insert(partSkillRequirements).values(
-        dto.skillRequirements.map((sr) => ({
+        uniqueReqs.map((sr) => ({
           partId: part.id,
           skillId: sr.skillId,
           minutesPerUnit: sr.minutesPerUnit,
@@ -78,9 +81,12 @@ export class PartsService {
           .delete(partSkillRequirements)
           .where(eq(partSkillRequirements.partId, id));
 
-        if (dto.skillRequirements.length > 0) {
+        const uniqueReqs = dto.skillRequirements.filter(
+          (sr, idx, arr) => arr.findIndex((x) => x.skillId === sr.skillId) === idx,
+        );
+        if (uniqueReqs.length > 0) {
           await tx.insert(partSkillRequirements).values(
-            dto.skillRequirements.map((sr) => ({
+            uniqueReqs.map((sr) => ({
               partId: id,
               skillId: sr.skillId,
               minutesPerUnit: sr.minutesPerUnit,

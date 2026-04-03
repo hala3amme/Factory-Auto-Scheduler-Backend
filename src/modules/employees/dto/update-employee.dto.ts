@@ -1,5 +1,6 @@
 import {
   IsString,
+  IsNotEmpty,
   IsOptional,
   IsBoolean,
   IsArray,
@@ -8,6 +9,7 @@ import {
 
 export class UpdateEmployeeDto {
   @IsString()
+  @IsNotEmpty()
   @IsOptional()
   name?: string;
 
