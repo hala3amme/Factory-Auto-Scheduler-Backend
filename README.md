@@ -45,17 +45,20 @@ npm install
 
 # 2. Configure environment
 cp .env.example .env
+# .env ships with safe defaults — no changes needed for local dev
 
-# 3. Start Postgres
-docker compose up -d postgres
+# 3. Start Postgres (dev on :5434, test on :5433)
+docker compose up -d
 
-# 4. Run migrations
-npm run migrate
+# 4. Apply schema
+npm run db:push
 
 # 5. Start the dev server
 npm run start:dev
 # → http://localhost:3000
 ```
+
+> **Note:** The dev Postgres container binds to host port **5434** (not 5432) to avoid conflicts with any locally installed Postgres instance.
 
 ---
 
@@ -103,6 +106,8 @@ curl -X POST http://localhost:3000/generate-schedule \
   -H 'Content-Type: application/json' -d '{"date":"2025-06-15"}'
 ```
 
+> **Postman:** import `docs/factory-auto-scheduler.postman_collection.json` for a fully pre-configured collection with auto-captured IDs. See `docs/POSTMAN_GUIDE.md`.
+
 ---
 
 ## Scheduling Algorithm
@@ -147,11 +152,11 @@ The scheduler uses a **deterministic greedy algorithm** designed for clarity ove
 ## Running Tests
 
 ```bash
-# Start test Postgres (port 5433)
-docker compose up -d postgres_test
+# Both Postgres containers must be running first
+docker compose up -d
 
-# Generate and run migrations against test DB
-DATABASE_URL=postgres://postgres:postgres@localhost:5433/factory_scheduler_test npm run migrate
+# Apply schema to the test DB (port 5433)
+DATABASE_URL=postgres://postgres:postgres@localhost:5433/factory_scheduler_test npm run db:push
 
 # Run E2E suite
 npm run test:e2e
