@@ -1,36 +1,38 @@
 {
   "info": {
     "name": "Factory Auto-Scheduler API",
-    "description": "Complete API collection for the Factory Auto-Scheduler Backend.\n\nQuick start:\n1. Set the `baseUrl` variable to your running server (default: http://localhost:3000)\n2. Run the requests in order: Skills → Employees → Parts → Production Requirements → Generate Schedule → Get Schedule\n\nThe collection uses collection-level variables so IDs are automatically captured\nafter each creation request and reused in subsequent requests.",
+    "description": "# Factory Auto-Scheduler API\n\nComplete Postman collection for the Factory Auto-Scheduler Backend (NestJS + PostgreSQL + Drizzle ORM).\n\n---\n\n## Before you start\n\n1. Make sure the app is running: `npm run start:dev` → `http://localhost:3000`\n2. The `baseUrl` collection variable is pre-set to `http://localhost:3000`. Change it if needed.\n\n---\n\n## Run requests in this order\n\n```\n1. Skills → Create Skill — Assembly\n2. Skills → Create Skill — Electronics\n3. Employees → Create Employee\n4. Parts → Create Part — Engine (multi-skill)\n5. Production Requirements → Set Production Requirement\n6. Scheduler → Generate Schedule   ← algorithm runs here\n7. Scheduler → Get Schedule by Date\n```\n\nIDs are **captured automatically** by test scripts and stored as collection variables — no copy-pasting needed.\n\n---\n\n## Collection Variables\n\n| Variable | Auto-set by | Purpose |\n|---|---|---|\n| `baseUrl` | You | Base URL for all requests |\n| `assemblySkillId` | Create Skill — Assembly | Referenced in part/employee creation |\n| `electronicsSkillId` | Create Skill — Electronics | Referenced in part creation |\n| `employeeId` | Create Employee | Get / Update employee |\n| `partId` | Create Part | Production requirement + scheduler |\n| `scheduleDate` | You (default `2025-06-15`) | Used in all date-based requests |\n\n---\n\nSee `docs/POSTMAN_GUIDE.md` for the full usage guide.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "baseUrl", "value": "http://localhost:3000", "type": "string" },
-    { "key": "assemblySkillId", "value": "", "type": "string" },
-    { "key": "electronicsSkillId", "value": "", "type": "string" },
-    { "key": "employeeId", "value": "", "type": "string" },
-    { "key": "partId", "value": "", "type": "string" },
-    { "key": "scheduleDate", "value": "2025-06-15", "type": "string" }
+    { "key": "baseUrl",           "value": "http://localhost:3000", "type": "string" },
+    { "key": "assemblySkillId",   "value": "", "type": "string" },
+    { "key": "electronicsSkillId","value": "", "type": "string" },
+    { "key": "employeeId",        "value": "", "type": "string" },
+    { "key": "partId",            "value": "", "type": "string" },
+    { "key": "scheduleDate",      "value": "2025-06-15", "type": "string" }
   ],
   "item": [
     {
-      "name": "Skills",
-      "description": "Manage the skill catalog. Skills are referenced when creating employees and parts.",
+      "name": "1 · Skills",
+      "description": "Manage the skill catalog.\n\nSkills are the building blocks of the scheduler. Every employee and every part skill requirement references a skill ID. Create all needed skills before creating employees or parts.\n\n**Endpoints**\n- `POST /skills` — create a skill (`name` must be unique)\n- `GET /skills` — list all skills",
       "item": [
         {
           "name": "Create Skill — Assembly",
+          "description": "Creates the **Assembly** skill and saves its `id` as the `assemblySkillId` collection variable.\n\n**What happens next:** this ID is automatically used when you create an employee or a part that requires assembly work.\n\n**Validation**\n- `name` — required, string, minimum 2 characters, must be unique\n\n**Returns** the created skill object:\n```json\n{ \"id\": \"uuid\", \"name\": \"Assembly\" }\n```",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
                   "const json = pm.response.json();",
+                  "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('Response has an id', () => pm.expect(json.id).to.be.a('string'));",
+                  "pm.test('Name matches', () => pm.expect(json.name).to.eql('Assembly'));",
                   "if (json.id) {",
                   "  pm.collectionVariables.set('assemblySkillId', json.id);",
-                  "  console.log('assemblySkillId saved:', json.id);",
-                  "}",
-                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
-                  "pm.test('Has id', () => pm.expect(json.id).to.be.a('string'));"
+                  "  console.log('✅ assemblySkillId saved:', json.id);",
+                  "}"
                 ],
                 "type": "text/javascript"
               }
@@ -39,27 +41,34 @@
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Assembly\"\n}"
-            },
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Assembly\"\n}" },
             "url": { "raw": "{{baseUrl}}/skills", "host": ["{{baseUrl}}"], "path": ["skills"] }
-          }
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n  \"name\": \"Assembly\"\n}"
+            }
+          ]
         },
         {
           "name": "Create Skill — Electronics",
+          "description": "Creates the **Electronics** skill and saves its `id` as `electronicsSkillId`.\n\nThe Engine part (created later) requires both Assembly and Electronics — this enables the multi-skill scheduling demo.",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
                   "const json = pm.response.json();",
+                  "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('Response has an id', () => pm.expect(json.id).to.be.a('string'));",
                   "if (json.id) {",
                   "  pm.collectionVariables.set('electronicsSkillId', json.id);",
-                  "  console.log('electronicsSkillId saved:', json.id);",
-                  "}",
-                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
-                  "pm.test('Has id', () => pm.expect(json.id).to.be.a('string'));"
+                  "  console.log('✅ electronicsSkillId saved:', json.id);",
+                  "}"
                 ],
                 "type": "text/javascript"
               }
@@ -68,22 +77,29 @@
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Electronics\"\n}"
-            },
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Electronics\"\n}" },
             "url": { "raw": "{{baseUrl}}/skills", "host": ["{{baseUrl}}"], "path": ["skills"] }
-          }
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": \"b2c3d4e5-f6a7-8901-bcde-f12345678901\",\n  \"name\": \"Electronics\"\n}"
+            }
+          ]
         },
         {
           "name": "List All Skills",
+          "description": "Returns every skill in the catalog.\n\nUseful to copy IDs when building requests manually.",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Returns array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns an array', () => pm.expect(pm.response.json()).to.be.an('array'));"
                 ],
                 "type": "text/javascript"
               }
@@ -92,28 +108,39 @@
           "request": {
             "method": "GET",
             "url": { "raw": "{{baseUrl}}/skills", "host": ["{{baseUrl}}"], "path": ["skills"] }
-          }
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "[\n  { \"id\": \"a1b2c3d4-...\", \"name\": \"Assembly\" },\n  { \"id\": \"b2c3d4e5-...\", \"name\": \"Electronics\" }\n]"
+            }
+          ]
         }
       ]
     },
     {
-      "name": "Employees",
-      "description": "Manage the employee roster. Each employee must reference valid skill IDs.",
+      "name": "2 · Employees",
+      "description": "Manage the employee roster.\n\nEach employee must have at least one skill. The scheduler only considers **active** employees (`isActive: true`).\n\n**Endpoints**\n- `POST /employees` — create employee with skills\n- `GET /employees` — list all\n- `GET /employees/:id` — get one by ID\n- `PATCH /employees/:id` — update name, status, or skills",
       "item": [
         {
           "name": "Create Employee",
+          "description": "Creates an employee and assigns skills in a single request.\n\n**Body fields**\n| Field | Type | Required | Notes |\n|---|---|---|---|\n| `name` | string | ✅ | Employee full name |\n| `skillIds` | string[] | ✅ | At least one valid skill UUID |\n\n**Returns** the employee with their `skillIds` array.\n\nThe `id` is saved as `employeeId` for use in Get/Update requests.",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
                   "const json = pm.response.json();",
+                  "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('Has employee id', () => pm.expect(json.id).to.be.a('string'));",
+                  "pm.test('Has skillIds', () => pm.expect(json.skillIds).to.be.an('array').with.lengthOf.above(0));",
                   "if (json.id) {",
                   "  pm.collectionVariables.set('employeeId', json.id);",
-                  "  console.log('employeeId saved:', json.id);",
-                  "}",
-                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
-                  "pm.test('Has skillIds', () => pm.expect(json.skillIds).to.be.an('array').with.lengthOf.above(0));"
+                  "  console.log('✅ employeeId saved:', json.id);",
+                  "}"
                 ],
                 "type": "text/javascript"
               }
@@ -124,20 +151,30 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Alice Smith\",\n  \"skillIds\": [\"{{assemblySkillId}}\", \"{{electronicsSkillId}}\"]\n}"
+              "raw": "{\n  \"name\": \"Alice Smith\",\n  \"skillIds\": [\n    \"{{assemblySkillId}}\",\n    \"{{electronicsSkillId}}\"\n  ]\n}"
             },
             "url": { "raw": "{{baseUrl}}/employees", "host": ["{{baseUrl}}"], "path": ["employees"] }
-          }
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": \"c3d4e5f6-...\",\n  \"name\": \"Alice Smith\",\n  \"isActive\": true,\n  \"createdAt\": \"2025-06-15T00:00:00.000Z\",\n  \"skillIds\": [\"a1b2c3d4-...\", \"b2c3d4e5-...\"]\n}"
+            }
+          ]
         },
         {
           "name": "List All Employees",
+          "description": "Returns all employees with their assigned `skillIds`.\n\nInactive employees (`isActive: false`) appear here but are **excluded from scheduling**.",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Returns array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns an array', () => pm.expect(pm.response.json()).to.be.an('array'));"
                 ],
                 "type": "text/javascript"
               }
@@ -150,13 +187,14 @@
         },
         {
           "name": "Get Employee by ID",
+          "description": "Fetch a single employee by their UUID.\n\nReturns `404` if not found. Returns `400` if the ID is not a valid UUID.",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Correct id', () => pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get('employeeId')));"
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('ID matches', () => pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get('employeeId')));"
                 ],
                 "type": "text/javascript"
               }
@@ -173,13 +211,13 @@
         },
         {
           "name": "Update Employee",
+          "description": "Partially updates an employee. All fields are optional.\n\n**Body fields**\n| Field | Type | Notes |\n|---|---|---|\n| `name` | string | New display name |\n| `isActive` | boolean | Set `false` to exclude from scheduling |\n| `skillIds` | string[] | Replaces the entire skill list |\n\n> Sending `skillIds: []` removes all skills (employee becomes unschedulable).",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Name updated', () => pm.expect(pm.response.json().name).to.eql('Alice Johnson'));"
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
                 ],
                 "type": "text/javascript"
               }
@@ -202,23 +240,24 @@
       ]
     },
     {
-      "name": "Parts",
-      "description": "Manage the parts catalog. Each part defines which skills are needed and how many minutes per unit.",
+      "name": "3 · Parts",
+      "description": "Manage the parts catalog.\n\nEach part definition includes `skillRequirements` — how many **minutes per unit** each skill lane requires. The scheduler uses this to expand a daily quantity into total minutes of demand per skill.\n\n**Example:** Engine with 20 units:\n- Assembly: 30 min/unit × 20 = **600 assembly-minutes**\n- Electronics: 15 min/unit × 20 = **300 electronics-minutes**\n\n**Endpoints**\n- `POST /parts` — create part with skill requirements\n- `GET /parts` — list all\n- `GET /parts/:id` — get one\n- `PATCH /parts/:id` — update name or requirements",
       "item": [
         {
           "name": "Create Part — Engine (multi-skill)",
+          "description": "Creates an **Engine** part that requires two skills:\n- **Assembly** — 30 minutes per unit\n- **Electronics** — 15 minutes per unit\n\nThis is the key multi-skill modeling feature: both skill lanes are tracked **independently** and must be staffed separately.\n\nThe `partId` is saved automatically for use in production requirements.",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
                   "const json = pm.response.json();",
+                  "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('Has 2 skill requirements', () => pm.expect(json.skillRequirements).to.be.an('array').with.lengthOf(2));",
                   "if (json.id) {",
                   "  pm.collectionVariables.set('partId', json.id);",
-                  "  console.log('partId saved:', json.id);",
-                  "}",
-                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
-                  "pm.test('Has skill requirements', () => pm.expect(json.skillRequirements).to.be.an('array').with.lengthOf(2));"
+                  "  console.log('✅ partId saved:', json.id);",
+                  "}"
                 ],
                 "type": "text/javascript"
               }
@@ -229,10 +268,19 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Engine\",\n  \"skillRequirements\": [\n    { \"skillId\": \"{{assemblySkillId}}\", \"minutesPerUnit\": 30 },\n    { \"skillId\": \"{{electronicsSkillId}}\", \"minutesPerUnit\": 15 }\n  ]\n}"
+              "raw": "{\n  \"name\": \"Engine\",\n  \"skillRequirements\": [\n    { \"skillId\": \"{{assemblySkillId}}\",    \"minutesPerUnit\": 30 },\n    { \"skillId\": \"{{electronicsSkillId}}\", \"minutesPerUnit\": 15 }\n  ]\n}"
             },
             "url": { "raw": "{{baseUrl}}/parts", "host": ["{{baseUrl}}"], "path": ["parts"] }
-          }
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": \"d4e5f6a7-...\",\n  \"name\": \"Engine\",\n  \"createdAt\": \"2025-06-15T00:00:00.000Z\",\n  \"skillRequirements\": [\n    { \"skillId\": \"a1b2c3d4-...\", \"minutesPerUnit\": 30 },\n    { \"skillId\": \"b2c3d4e5-...\", \"minutesPerUnit\": 15 }\n  ]\n}"
+            }
+          ]
         },
         {
           "name": "List All Parts",
@@ -241,8 +289,8 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Returns array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns an array', () => pm.expect(pm.response.json()).to.be.an('array'));"
                 ],
                 "type": "text/javascript"
               }
@@ -260,7 +308,7 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
                   "pm.test('Has skillRequirements', () => pm.expect(pm.response.json().skillRequirements).to.be.an('array'));"
                 ],
                 "type": "text/javascript"
@@ -278,12 +326,13 @@
         },
         {
           "name": "Update Part",
+          "description": "Updates a part's name and/or replaces its skill requirements.\n\nPassing `skillRequirements` **replaces the entire list** (not a merge).",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
                 ],
                 "type": "text/javascript"
               }
@@ -294,7 +343,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Engine v2\",\n  \"skillRequirements\": [\n    { \"skillId\": \"{{assemblySkillId}}\", \"minutesPerUnit\": 25 },\n    { \"skillId\": \"{{electronicsSkillId}}\", \"minutesPerUnit\": 10 }\n  ]\n}"
+              "raw": "{\n  \"name\": \"Engine v2\",\n  \"skillRequirements\": [\n    { \"skillId\": \"{{assemblySkillId}}\",    \"minutesPerUnit\": 25 },\n    { \"skillId\": \"{{electronicsSkillId}}\", \"minutesPerUnit\": 10 }\n  ]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/parts/{{partId}}",
@@ -306,20 +355,20 @@
       ]
     },
     {
-      "name": "Production Requirements",
-      "description": "Set daily production quotas. Calling POST again for the same date + part updates the quantity (upsert).",
+      "name": "4 · Production Requirements",
+      "description": "Set how many units of each part must be produced on a given date.\n\nThis is an **upsert**: calling POST again for the same `(date, partId)` pair updates the quantity instead of creating a duplicate.\n\n**Endpoints**\n- `POST /production-requirements` — set/update daily quota\n- `GET /production-requirements?date=YYYY-MM-DD` — list requirements for a date",
       "item": [
         {
           "name": "Set Production Requirement",
+          "description": "Sets the daily quota.\n\n**Body fields**\n| Field | Type | Required | Notes |\n|---|---|---|---|\n| `date` | string | ✅ | Format: `YYYY-MM-DD` |\n| `partId` | string | ✅ | Valid part UUID |\n| `quantity` | integer | ✅ | Minimum 1 |\n\n**Example math:** 20 Engines with 30 min/unit Assembly → 600 assembly-minutes of demand for the scheduler.",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
                   "const json = pm.response.json();",
-                  "pm.test('Has date', () => pm.expect(json.date).to.be.a('string'));",
-                  "pm.test('Has quantity', () => pm.expect(json.quantity).to.eql(20));"
+                  "pm.test('Quantity is 20', () => pm.expect(json.quantity).to.eql(20));"
                 ],
                 "type": "text/javascript"
               }
@@ -337,17 +386,27 @@
               "host": ["{{baseUrl}}"],
               "path": ["production-requirements"]
             }
-          }
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": \"e5f6a7b8-...\",\n  \"date\": \"2025-06-15\",\n  \"partId\": \"d4e5f6a7-...\",\n  \"quantity\": 20\n}"
+            }
+          ]
         },
         {
           "name": "Get Requirements by Date",
+          "description": "Returns all production requirements for a specific date, joined with part names.\n\n**Query param:** `date` must be `YYYY-MM-DD`. Returns `400` for any other format.",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Returns array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns an array', () => pm.expect(pm.response.json()).to.be.an('array'));"
                 ],
                 "type": "text/javascript"
               }
@@ -366,23 +425,24 @@
       ]
     },
     {
-      "name": "Scheduler",
-      "description": "Generate a shift roster for a given date and retrieve saved schedules.\n\nThe scheduler expands production requirements into skill-minute lanes, then greedily assigns active employees per shift (MORNING → SWING → NIGHT) while enforcing an 8-hour minimum rest window.\n\nResponse includes:\n- assignments[]: employee + skill + shift + minutesAllocated\n- unmetDemand[]: skillId + minutesUnmet (empty when fully staffed)",
+      "name": "5 · Scheduler",
+      "description": "The core of the service.\n\n## How the algorithm works\n\n1. **Expand demand** — multiply each part's quantity × minutesPerUnit per skill → `Map<skillId, totalMinutes>`\n2. **Sort lanes** — skill lanes ordered by remaining demand (largest first)\n3. **Assign greedily** — for each shift (`MORNING → SWING → NIGHT`), assign eligible employees FIFO until demand is met:\n   - Employee must have the required skill\n   - Employee must not already be assigned today\n   - Employee must not violate the 8-hour rest window\n4. **Persist** — schedule + assignments saved in a single DB transaction\n5. **Return** — `assignments[]` + `unmetDemand[]`\n\n## Shift windows (UTC)\n| Shift | Hours |\n|---|---|\n| `MORNING` | 06:00 – 14:00 |\n| `SWING` | 14:00 – 22:00 |\n| `NIGHT` | 22:00 – 06:00 |\n\n## Rest rule\nIf an employee worked `NIGHT` on day N, they cannot work `MORNING` on day N+1 (0h gap < 8h minimum).",
       "item": [
         {
           "name": "Generate Schedule",
+          "description": "Runs the greedy scheduling algorithm for the given date and persists the result.\n\n**Body:** `{ \"date\": \"YYYY-MM-DD\" }`\n\n**Response fields**\n| Field | Type | Description |\n|---|---|---|\n| `scheduleId` | string | UUID of the created schedule row |\n| `date` | string | The scheduled date |\n| `assignments` | array | Employee shift assignments |\n| `assignments[].employeeId` | string | Assigned employee UUID |\n| `assignments[].skillId` | string | Skill lane this assignment covers |\n| `assignments[].shift` | string | `MORNING`, `SWING`, or `NIGHT` |\n| `assignments[].minutesAllocated` | number | Minutes assigned (max 480) |\n| `unmetDemand` | array | Skill lanes with unfilled demand |\n| `unmetDemand[].skillId` | string | The skill that is understaffed |\n| `unmetDemand[].minutesUnmet` | number | Remaining minutes not covered |\n\n> **Re-run safe:** calling Generate again for the same date **replaces** the old schedule.",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
                   "const json = pm.response.json();",
                   "pm.test('Has scheduleId', () => pm.expect(json.scheduleId).to.be.a('string'));",
                   "pm.test('Has assignments array', () => pm.expect(json.assignments).to.be.an('array'));",
                   "pm.test('Has unmetDemand array', () => pm.expect(json.unmetDemand).to.be.an('array'));",
-                  "console.log('Assignments:', json.assignments.length);",
-                  "console.log('Unmet demand:', json.unmetDemand);"
+                  "console.log('📋 Assignments:', json.assignments.length);",
+                  "console.log('⚠️ Unmet demand:', JSON.stringify(json.unmetDemand));"
                 ],
                 "type": "text/javascript"
               }
@@ -391,28 +451,42 @@
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"date\": \"{{scheduleDate}}\"\n}"
-            },
+            "body": { "mode": "raw", "raw": "{\n  \"date\": \"{{scheduleDate}}\"\n}" },
             "url": {
               "raw": "{{baseUrl}}/generate-schedule",
               "host": ["{{baseUrl}}"],
               "path": ["generate-schedule"]
             }
-          }
+          },
+          "response": [
+            {
+              "name": "200 OK — schedule generated",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"scheduleId\": \"f6a7b8c9-...\",\n  \"date\": \"2025-06-15\",\n  \"assignments\": [\n    {\n      \"employeeId\": \"c3d4e5f6-...\",\n      \"skillId\": \"a1b2c3d4-...\",\n      \"shift\": \"MORNING\",\n      \"minutesAllocated\": 480\n    }\n  ],\n  \"unmetDemand\": [\n    { \"skillId\": \"b2c3d4e5-...\", \"minutesUnmet\": 120 }\n  ]\n}"
+            },
+            {
+              "name": "400 — no requirements for date",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"statusCode\": 400,\n  \"timestamp\": \"2025-06-15T10:00:00.000Z\",\n  \"path\": \"/generate-schedule\",\n  \"message\": \"No production requirements found for date 2025-06-15\"\n}"
+            }
+          ]
         },
         {
           "name": "Get Schedule by Date",
+          "description": "Retrieves a previously generated schedule and all its assignments.\n\nReturns `404` if no schedule has been generated for that date yet.",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
                   "const json = pm.response.json();",
-                  "pm.test('Has schedule', () => pm.expect(json.schedule).to.be.an('object'));",
-                  "pm.test('Has assignments', () => pm.expect(json.assignments).to.be.an('array'));"
+                  "pm.test('Has schedule object', () => pm.expect(json.schedule).to.be.an('object'));",
+                  "pm.test('Has assignments array', () => pm.expect(json.assignments).to.be.an('array'));"
                 ],
                 "type": "text/javascript"
               }
@@ -425,23 +499,38 @@
               "host": ["{{baseUrl}}"],
               "path": ["schedules", "{{scheduleDate}}"]
             }
-          }
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"schedule\": {\n    \"id\": \"f6a7b8c9-...\",\n    \"date\": \"2025-06-15\",\n    \"generatedAt\": \"2025-06-15T10:00:00.000Z\"\n  },\n  \"assignments\": [\n    {\n      \"id\": \"g7h8i9j0-...\",\n      \"employeeId\": \"c3d4e5f6-...\",\n      \"skillId\": \"a1b2c3d4-...\",\n      \"shift\": \"MORNING\",\n      \"minutesAllocated\": 480\n    }\n  ]\n}"
+            },
+            {
+              "name": "404 — not found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"statusCode\": 404,\n  \"timestamp\": \"2025-06-15T10:00:00.000Z\",\n  \"path\": \"/schedules/2025-06-15\",\n  \"message\": \"No schedule found for date 2025-06-15\"\n}"
+            }
+          ]
         }
       ]
     },
     {
-      "name": "Error Cases",
-      "description": "Demonstrates validation and error handling — useful for exploring the API's guard rails.",
+      "name": "6 · Error Cases",
+      "description": "Explore validation and error responses.\n\nAll errors follow this shape:\n```json\n{\n  \"statusCode\": 400,\n  \"timestamp\": \"2025-06-15T10:00:00.000Z\",\n  \"path\": \"/the/requested/path\",\n  \"message\": \"Human-readable error\"\n}\n```",
       "item": [
         {
-          "name": "Create Employee — missing skillIds (400)",
+          "name": "Create Employee — missing skillIds → 400",
+          "description": "`skillIds` is required and must contain at least one entry. This request omits it intentionally.",
           "event": [
             {
               "listen": "test",
               "script": {
-                "exec": [
-                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
-                ],
+                "exec": ["pm.test('Status is 400', () => pm.response.to.have.status(400));"],
                 "type": "text/javascript"
               }
             }
@@ -449,22 +538,18 @@
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Missing Skills\"\n}"
-            },
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"No Skills Employee\"\n}" },
             "url": { "raw": "{{baseUrl}}/employees", "host": ["{{baseUrl}}"], "path": ["employees"] }
           }
         },
         {
-          "name": "Get Employee — invalid UUID (400)",
+          "name": "Get Employee — invalid UUID → 400",
+          "description": "All `:id` path params are validated as UUID v4. Non-UUID strings return 400.",
           "event": [
             {
               "listen": "test",
               "script": {
-                "exec": [
-                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
-                ],
+                "exec": ["pm.test('Status is 400', () => pm.response.to.have.status(400));"],
                 "type": "text/javascript"
               }
             }
@@ -479,14 +564,13 @@
           }
         },
         {
-          "name": "Get Requirements — bad date format (400)",
+          "name": "Get Requirements — bad date format → 400",
+          "description": "The `date` query param must be `YYYY-MM-DD`. This sends `15-06-2025` which fails validation.",
           "event": [
             {
               "listen": "test",
               "script": {
-                "exec": [
-                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
-                ],
+                "exec": ["pm.test('Status is 400', () => pm.response.to.have.status(400));"],
                 "type": "text/javascript"
               }
             }
@@ -502,14 +586,13 @@
           }
         },
         {
-          "name": "Generate Schedule — no requirements for date (400)",
+          "name": "Generate Schedule — no requirements → 400",
+          "description": "Trying to generate a schedule when no production requirements exist for that date.",
           "event": [
             {
               "listen": "test",
               "script": {
-                "exec": [
-                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
-                ],
+                "exec": ["pm.test('Status is 400', () => pm.response.to.have.status(400));"],
                 "type": "text/javascript"
               }
             }
@@ -517,10 +600,7 @@
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"date\": \"1999-01-01\"\n}"
-            },
+            "body": { "mode": "raw", "raw": "{\n  \"date\": \"1999-01-01\"\n}" },
             "url": {
               "raw": "{{baseUrl}}/generate-schedule",
               "host": ["{{baseUrl}}"],
@@ -529,14 +609,13 @@
           }
         },
         {
-          "name": "Get Schedule — not found (404)",
+          "name": "Get Schedule — date not scheduled yet → 404",
+          "description": "Requesting a schedule for a date that has never had `POST /generate-schedule` called.",
           "event": [
             {
               "listen": "test",
               "script": {
-                "exec": [
-                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
-                ],
+                "exec": ["pm.test('Status is 404', () => pm.response.to.have.status(404));"],
                 "type": "text/javascript"
               }
             }
