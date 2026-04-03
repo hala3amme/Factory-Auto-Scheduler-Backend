@@ -147,39 +147,46 @@ describe('Scheduler E2E', () => {
       });
     const partId: string = partRes.body.id;
 
-    // Day 1 (PREV_DATE): assign Bob to NIGHT shift by scheduling
+    // ── Seed a NIGHT schedule for PREV_DATE directly into the DB ─────────────
+    // This bypasses the greedy API (which always tries MORNING first) and lets
+    // us test the rest-window logic in isolation.
+    const [prevSchedule] = await db
+      .insert(schema.schedules)
+      .values({ date: PREV_DATE })
+      .returning();
+
+    await db.insert(schema.scheduleAssignments).values({
+      scheduleId: prevSchedule.id,
+      employeeId: bobId,
+      skillId,
+      shift: 'NIGHT',
+      minutesAllocated: 480,
+    });
+
+    // ── Now generate a schedule for TEST_DATE ────────────────────────────────
+    // NIGHT ends at 06:00 of TEST_DATE; MORNING starts at 06:00 of TEST_DATE
+    // → gap = 0h < 8h minimum rest → Bob must be BLOCKED from MORNING
     await request(app.getHttpServer())
       .post('/production-requirements')
-      .send({ date: PREV_DATE, partId, quantity: 48 }); // 48*10=480 min = fills one shift
-
-    const day1 = await request(app.getHttpServer())
-      .post('/generate-schedule')
-      .send({ date: PREV_DATE })
-      .expect(200);
-
-    // Verify Bob was assigned night (he's the only employee)
-    const bobDay1 = day1.body.assignments.find(
-      (a: { employeeId: string }) => a.employeeId === bobId,
-    );
-    expect(bobDay1).toBeDefined();
-
-    // Day 2 (TEST_DATE): small requirement — should Bob be assigned to MORNING?
-    // Night ends at 06:00 next day; MORNING starts at 06:00 same day = 0h gap < 8h
-    await request(app.getHttpServer())
-      .post('/production-requirements')
-      .send({ date: TEST_DATE, partId, quantity: 1 }); // tiny demand
+      .send({ date: TEST_DATE, partId, quantity: 1 });
 
     const day2 = await request(app.getHttpServer())
       .post('/generate-schedule')
       .send({ date: TEST_DATE })
       .expect(200);
 
-    // If Bob was on NIGHT on PREV_DATE, he must NOT appear on MORNING of TEST_DATE
-    const bobDay2Morning = day2.body.assignments.find(
+    // Bob must NOT appear on MORNING of TEST_DATE
+    const bobMorning = day2.body.assignments.find(
       (a: { employeeId: string; shift: string }) =>
         a.employeeId === bobId && a.shift === 'MORNING',
     );
-    expect(bobDay2Morning).toBeUndefined();
+    expect(bobMorning).toBeUndefined();
+
+    // Bob may appear on SWING (gap = 8h: NIGHT ends 06:00, SWING starts 14:00)
+    // or NIGHT (gap = 16h). The key assertion is that MORNING is blocked.
+    // unmetDemand should be empty IF Bob is assigned to a later shift
+    // (demand is only 1 unit × 10 min = 10 min, well within one shift).
+    expect(day2.body.unmetDemand).toHaveLength(0);
   });
 
   // ───────────────────────────────────────────────────────────────────────────
