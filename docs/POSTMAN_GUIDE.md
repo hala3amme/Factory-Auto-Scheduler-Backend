@@ -183,6 +183,9 @@ Demonstrates the API's validation and error responses.
 | Request | Expected status | Why |
 |---|---|---|
 | Create Employee — missing skillIds | `400` | `skillIds` is required and must have ≥ 1 entry |
+| Create Employee — unknown skillId | `400` | Referenced skill UUID does not exist (FK violation) |
+| Create Skill — duplicate name | `409` | Skill name must be unique (unique constraint) |
+| Update Employee — empty name | `400` | `name` is optional but cannot be an empty string |
 | Get Employee — invalid UUID | `400` | Path param must be a valid UUID v4 |
 | Get Requirements — bad date | `400` | `date` query param must be `YYYY-MM-DD` |
 | Generate Schedule — no requirements | `400` | No production requirements exist for that date |

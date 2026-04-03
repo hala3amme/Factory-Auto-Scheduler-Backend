@@ -524,6 +524,75 @@
       "description": "Explore validation and error responses.\n\nAll errors follow this shape:\n```json\n{\n  \"statusCode\": 400,\n  \"timestamp\": \"2025-06-15T10:00:00.000Z\",\n  \"path\": \"/the/requested/path\",\n  \"message\": \"Human-readable error\"\n}\n```",
       "item": [
         {
+          "name": "Create Employee — unknown skillId → 400",
+          "description": "Sending a valid UUID that does not reference an existing skill triggers a PostgreSQL foreign-key violation (SQLSTATE 23503), which the API maps to `400 Bad Request`.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Message mentions referenced resource', () => pm.expect(pm.response.json().message).to.include('Referenced resource not found'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Ghost Employee\",\n  \"skillIds\": [\"00000000-0000-0000-0000-000000000000\"]\n}" },
+            "url": { "raw": "{{baseUrl}}/employees", "host": ["{{baseUrl}}"], "path": ["employees"] }
+          }
+        },
+        {
+          "name": "Create Skill — duplicate name → 409",
+          "description": "Skill names must be unique. Creating a second skill with the same name triggers a PostgreSQL unique-constraint violation (SQLSTATE 23505), which the API maps to `409 Conflict`.\n\n> **Prerequisite:** run *Create Skill — Assembly* first so the name `Assembly` already exists.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Message mentions already exists', () => pm.expect(pm.response.json().message).to.include('Resource already exists'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Assembly\"\n}" },
+            "url": { "raw": "{{baseUrl}}/skills", "host": ["{{baseUrl}}"], "path": ["skills"] }
+          }
+        },
+        {
+          "name": "Update Employee — empty name → 400",
+          "description": "`name` is optional in a PATCH request, but if provided it must be a non-empty string. Sending `\"name\": \"\"` returns `400 Bad Request`.\n\n> **Prerequisite:** run *Create Employee* first so `{{employeeId}}` is set.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"\"\n}" },
+            "url": {
+              "raw": "{{baseUrl}}/employees/{{employeeId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["employees", "{{employeeId}}"]
+            }
+          }
+        },
+        {
           "name": "Create Employee — missing skillIds → 400",
           "description": "`skillIds` is required and must contain at least one entry. This request omits it intentionally.",
           "event": [
