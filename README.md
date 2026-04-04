@@ -60,8 +60,8 @@ cp .env.example .env
 # 3. Start Postgres (dev on :5434, test on :5433)
 docker compose up -d
 
-# 4. Apply schema
-npm run db:push
+# 4. Apply schema + seed demo data  (or run db:push and db:seed separately)
+npm run db:setup
 
 # 5. Start the dev server
 npm run start:dev
@@ -72,12 +72,49 @@ npm run start:dev
 
 ---
 
+## Demo Data (seeder)
+
+`npm run db:seed` loads a realistic factory scenario into the dev database so you can immediately run the scheduler and see real output. The seed is **idempotent** — safe to run multiple times.
+
+**What gets seeded:**
+
+| Type | Items |
+|---|---|
+| Skills | Assembly · Electronics · Welding · Painting |
+| Parts | Engine (Assembly + Electronics) · Body Panel (Welding + Painting) · Gear (Assembly) |
+| Employees | Alice Chen · Bob Martinez · Carol White · Dave Kim · Eva Rodriguez · Frank Turner *(inactive)* |
+| Production requirements | 10 Engines + 20 Body Panels + 30 Gears — for **today's date** |
+
+**After seeding, run the scheduler:**
+
+```bash
+curl -X POST http://localhost:3000/generate-schedule \
+  -H 'Content-Type: application/json' \
+  -d "{\"date\":\"$(date +%Y-%m-%d)\"}"
+```
+
+**Expected result:**
+
+| Shift | Employee | Skill | Minutes |
+|---|---|---|---|
+| MORNING | Alice Chen | Assembly | 480 |
+| MORNING | Bob Martinez | Assembly | 180 |
+| MORNING | Dave Kim | Welding | 480 |
+| MORNING | Eva Rodriguez | Welding | 20 |
+| MORNING | Carol White | Electronics | 150 |
+| — | *Painting* | *unmet* | *200 min* |
+
+> Frank Turner (Painting) is **inactive** and excluded from scheduling, leaving 200 painting-minutes unmet. This demonstrates all three scheduler features: multi-employee lanes, rest enforcement, and `unmetDemand`.
+
+---
+
 ## Endpoint Reference
 
 | Method | Path | Body | Description |
 |--------|------|------|-------------|
 | `POST` | `/skills` | `{ name }` | Create a skill |
 | `GET` | `/skills` | — | List all skills |
+| `PATCH` | `/skills/:id` | `{ name? }` | Rename a skill |
 | `POST` | `/employees` | `{ name, skillIds[] }` | Create an employee |
 | `GET` | `/employees` | — | List all employees |
 | `GET` | `/employees/:id` | — | Get employee by ID |
@@ -173,7 +210,7 @@ DATABASE_URL=postgres://postgres:postgres@localhost:5433/factory_scheduler_test 
 npm run test:e2e
 ```
 
-The suite covers four deterministic scenarios: skill constraint, rest constraint, multi-skill part, and insufficient capacity.
+The suite covers 56 scenarios across all modules: full CRUD + validation on every endpoint, skill constraint, rest constraint, multi-skill part, insufficient capacity, and scheduler edge cases.
 
 ---
 

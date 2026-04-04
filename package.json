@@ -16,6 +16,8 @@
     "migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
+    "db:seed": "ts-node -r tsconfig-paths/register src/database/seed.ts",
+    "db:setup": "npm run db:push && npm run db:seed",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",

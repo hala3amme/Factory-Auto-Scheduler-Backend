@@ -11,9 +11,11 @@ Make sure the app is running locally:
 
 ```bash
 docker compose up -d          # start Postgres containers
-npm run db:push               # apply schema to dev DB
+npm run db:setup              # apply schema + seed demo data
 npm run start:dev             # start API on :3000
 ```
+
+> **Tip — skip manual setup with the seeder:** `npm run db:setup` seeds 4 skills, 3 parts, 6 employees (1 inactive), and today's production requirements. You can jump straight to **step 6 (Generate Schedule)** without running steps 1–5 manually. The `scheduleDate` variable is pre-set to `2025-06-15`; change it to today's date to match the seeded requirements.
 
 ---
 
