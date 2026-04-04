@@ -70,6 +70,12 @@ npm run start:dev
 
 > **Note:** The dev Postgres container binds to host port **5434** (not 5432) to avoid conflicts with any locally installed Postgres instance.
 
+> **Port conflict?** If you see `Error: listen EADDRINUSE :::3000`, a previous server instance is still running. Kill it with:
+> ```bash
+> lsof -ti :3000 | xargs kill -9
+> ```
+> Then re-run `npm run start:dev`.
+
 ---
 
 ## Demo Data (seeder)
