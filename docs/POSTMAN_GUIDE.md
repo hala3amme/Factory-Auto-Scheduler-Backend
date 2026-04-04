@@ -61,10 +61,16 @@ After step 6 you will see:
 |---|---|---|---|
 | Create Skill | POST | `/skills` | Adds a skill to the catalog. `name` must be unique. |
 | List All Skills | GET | `/skills` | Returns all skills. |
+| Update Skill | PATCH | `/skills/:id` | Renames a skill. `name` must be non-empty and unique. |
 
-**Body:**
+**Create body:**
 ```json
 { "name": "Assembly" }
+```
+
+**Update body (all fields optional):**
+```json
+{ "name": "Mechanical Assembly" }
 ```
 
 ---
